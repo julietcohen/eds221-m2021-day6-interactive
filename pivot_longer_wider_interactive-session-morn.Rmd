@@ -1,0 +1,104 @@
+---
+title: "Interactive-session-morning"
+author: "Juliet"
+date: "8/16/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+```
+
+```{r}
+#read in the file, specify there are NA's, exclude .. and empty cells
+
+wb_indicators <- read_csv(here("data", "wb_indicators.csv"), na = c("..", ""))
+
+#values of the variable "year" are column headers, this is not tidy
+#do initial exploration, View(), dim(), names(), sum(), unique() to find unique groups within a col
+
+
+```
+## use pivot_longer
+```{r}
+#reshape into long format so year is 1 col
+#first pivot the col that start with 2001-2020 so the col names populate a single col called year, and put their values into a new col called indicator value
+#use names(wb_indicators) in the console to call the names
+#can also index the col with []
+#needs quotes only because the col names have spaces and you did not convert to lower snake case with janitor()
+
+wb_indicators_long <- wb_indicators %>% 
+  pivot_longer(cols = ('2001 [YR2001]':'2020 [YR2020]'),
+               names_to = "year",
+               values_to = "indicator_value")
+
+# then clean up the year col, this could all be done in the same pipe sequence but we are breaking it up
+```
+
+## clean up the year column
+
+```{r}
+
+wb_data_sep <- wb_indicators_long %>% 
+  separate(col = year,
+           into = c("year", "year_chr"),
+           sep = " ") %>% 
+  select(-c('year_chr', 'Country Code', 'Series Code', 'Series Code'))
+
+# drop redundant col using dplyr::select
+```
+
+# make new data frame
+
+```{r}
+# ~ indicates column header
+
+df <- tribble(
+  ~name, ~A, ~B, ~C,
+  "teddy", 4, 5, 6,
+  "Khora", 9, 10, 11
+)
+
+df_long <- df %>% 
+  pivot_longer(cols = c(A:C),
+               names_to = 'dog_food',
+               values_to = 'ranking')
+df_long
+
+# if A, B, C are dog food types, convert this to tidy structure
+
+#now make it wide with dog food types in their individual col
+
+df_wide <- df_long %>% 
+  pivot_wider(names_from = dog_food,
+              values_from = ranking)
+
+df_wide
+
+```
+# now use pivot_wider to get indicators in their own col
+```{r}
+#drop_na('Series name') means you drop the entire row if there is no series name
+wb_data_tidy <- wb_data_sep %>% 
+  drop_na('Series Name') %>% 
+  pivot_wider(names_from = 'Series Name',
+              values_from = indicator_value)
+
+wb_data_tidy
+
+#rename the cols
+
+names(wb_data_tidy) <- c("country", "year", "access_clean_fuels", "access_elec", "co2_em", "fossil_fuel_con", "water_stress")
+
+names(wb_data_tidy)
+
+# rename() allows you to rename only 1 col at a time, give it the new_name = old_name, this can be confusing
+
+wb_data_tidy <- wb_data_tidy %>% 
+  rename(country_name = country,
+         electricity = access_elec)
+
+```
+
